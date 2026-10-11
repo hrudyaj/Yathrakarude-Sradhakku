@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Yathrakarude Sradhakku | യാത്രക്കാരുടെ ശ്രദ്ധയ്ക്ക്</title>
+    <meta name="description" content="Attention, travellers! A collaborative travel exploration game connecting travellers and locals to complete quests and shape a shared persistent world.">
+    <meta name="theme-color" content="#253B36">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&family=Noto+Serif+Malayalam:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <div id="app">
+
+        <!-- Top Navigation Bar -->
+        
+        <!-- Top Navigation Bar / Game HUD Top -->
+        <div class="game-hud-top">
+            <div class="hud-brand-pill">
+                <span class="hud-pulse-dot"></span>
+                <strong id="hud-user-callsign">Arjun K.</strong>
+                <span class="hud-sep">•</span>
+                <span id="hud-home-badge" class="hud-badge-tag">Home: Fort Kochi</span>
+                <span class="hud-sep">•</span>
+                <span id="hud-points-badge" class="hud-badge-points">1,480 Pts</span>
+            </div>
+
+            <div class="hud-controls-cluster">
+                <!-- Device Local Time Indicator -->
+                <div class="hud-time-pill" id="hud-time-indicator" title="Synced with Device Local Time">
+                    <span id="hud-time-icon"></span>
+                    <span id="hud-time-text">Night (05:15)</span>
+                </div>
+
+                <!-- Camera View Mode Toggle (First Person 3D vs World Overview Map) -->
+                <button id="btn-view-mode" class="hud-control-btn active-view" title="Toggle First-Person 3D / World Overview Map">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <span id="view-mode-label">3D View</span>
+                </button>
+
+                <!-- Zoom Controls for Overview Map -->
+                <div class="hud-zoom-group">
+                    <button id="btn-zoom-in" class="hud-control-btn btn-sm" title="Zoom In (Map / World)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                    <button id="btn-zoom-out" class="hud-control-btn btn-sm" title="Zoom Out (Map / World)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                </div>
+
+                <!-- Recenter to Player Location -->
+                <button id="btn-recenter" class="hud-control-btn btn-icon" title="Recenter Camera on You">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/></svg>
+                </button>
+
+                <!-- Registration / Identity Edit Button -->
+                <button id="btn-open-onboarding" class="hud-control-btn btn-icon" title="Wayfarer Identity & Onboarding">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </button>
+
+                <!-- Messages / Dispatches Button -->
+                <button id="btn-open-messages" class="hud-action-btn" title="Open Dispatches & Telegraph">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    <span class="unread-dot" id="messages-unread-dot"></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+
+            <!-- TAB 1: EXPLORE (3D World + Land Parcels Grid as primary experience) -->
+            <section id="tab-explore" class="tab-pane active">
+                <div id="game-environment-container">
+                    <canvas id="game-canvas"></canvas>
+
+                    <!-- Game HUD Overlay -->
+                    <div class="hud-overlay" id="game-hud">
+                        <!-- Location & Current Tile Banner -->
+                        <div class="hud-location-banner" id="hud-location-banner">
+                            <span class="hud-radar-beacon"></span>
+                            <span id="hud-current-parcel-tag">Tile: Fort Kochi Central</span>
+                            <span class="hud-sep">•</span>
+                            <span id="hud-location-label">GPS Fixed: 9.9632° N, 76.2430° E</span>
+                        </div>
+
+                        <!-- Virtual Movement D-Pad Controls (for exploring the 3D space on any device) -->
+                        <div class="virtual-dpad" id="virtual-dpad">
+                            <div class="dpad-center-label">NAV</div>
+                            <button class="dpad-btn dpad-up" id="btn-dpad-up" title="Walk Forward (W / Up Arrow)"></button>
+                            <button class="dpad-btn dpad-left" id="btn-dpad-left" title="Turn Left (A / Left Arrow)"></button>
+                            <button class="dpad-btn dpad-right" id="btn-dpad-right" title="Turn Right (D / Right Arrow)"></button>
+                            <button class="dpad-btn dpad-down" id="btn-dpad-down" title="Walk Backward (S / Down Arrow)"></button>
+                        </div>
+
+                        <!-- Interactive Land Parcel Inspector (Appears when on parcel or on click) -->
+                        <div class="hud-parcel-card" id="hud-parcel-card">
+                            <div class="parcel-card-header">
+                                <div class="parcel-badge-row">
+                                    <span class="parcel-state-pill state-blue" id="pc-state-pill">Standing on Tile</span>
+                                    <span class="parcel-shield-badge hide" id="pc-shield-badge"> Aegis Shield Active</span>
+                                </div>
+                                <button class="modal-close-btn" id="btn-close-parcel-card">&times;</button>
+                            </div>
+                            <h3 class="parcel-name" id="pc-name">Spice Wharf #01</h3>
+                            <div class="parcel-type-row">
+                                <span id="pc-type">Maritime Port</span>
+                                <span class="parcel-coords" id="pc-coords">[-87.5m, -87.5m]</span>
+                            </div>
+
+                            <div class="parcel-metrics-grid">
+                                <div class="p-metric">
+                                    <span class="metric-label">Current Owner</span>
+                                    <strong class="metric-val" id="pc-owner">Arjun K. (You)</strong>
+                                </div>
+                                <div class="p-metric">
+                                    <span class="metric-label">Staked Points</span>
+                                    <strong class="metric-val" id="pc-staked-points">240 Pts</strong>
+                                </div>
+                                <div class="p-metric">
+                                    <span class="metric-label">Distance from Home</span>
+                                    <strong class="metric-val" id="pc-dist-km">12.4 km</strong>
+                                </div>
+                                <div class="p-metric">
+                                    <span class="metric-label">Distance Yield Multiplier</span>
+                                    <strong class="metric-val highlight" id="pc-dist-multiplier">1.5x Multiplier</strong>
+                                </div>
+                            </div>
+
+                            <div class="parcel-actions-row">
+                                <button class="btn-action-primary" id="btn-claim-parcel">
+                                    Stake Claim (+Points)
+                                </button>
+                                <button class="btn-action-shield" id="btn-shield-parcel">
+                                     Activate Shield (6h)
+                                </button>
+                                <button class="btn-action-secondary" id="btn-open-trade-modal">
+                                     Propose Trade
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Floating Quest/Landmark Info Panel -->
+                        <div class="hud-bottom-panel hide" id="hud-quest-panel">
+                            <div class="hud-panel-header">
+                                <span class="badge-pill" id="hud-category">Category</span>
+                                <button class="modal-close-btn" id="btn-close-hud">&times;</button>
+                            </div>
+                            <h3 class="hud-quest-title" id="hud-title">Quest Title</h3>
+                            <p class="hud-quest-location" id="hud-location">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                Location
+                            </p>
+                            <p class="hud-quest-desc" id="hud-desc">Quest short description...</p>
+                            <button class="btn-editorial-primary btn-full-width" id="btn-hud-inspect" style="margin-top: 12px; font-size: 0.9rem; padding: 10px;">
+                                Inspect Quest Details &rarr;
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: QUESTS -->
+            <section id="tab-quests" class="game-modal-overlay hide"><div class="game-modal-content"><button class="modal-close-btn" data-close-modal="tab-quests">&times;</button>
+                <div class="section-container">
+                    <div class="editorial-header-block">
+                        <span class="sub-label">Collaborative Expeditions</span>
+                        <h2 class="page-title">Travel Quests</h2>
+                        <p class="page-subtitle">
+                            Team up with local elders, naturalists, and fellow travellers. Solve cultural clues, explore hidden neighbourhoods, and preserve discoveries in the shared world.
+                        </p>
+                    </div>
+
+                    <!-- Quests Filters Bar -->
+                    <div class="filters-bar">
+                        <div class="filter-chips-group" id="quest-category-filters">
+                            <button class="filter-chip active" data-filter="all">All Quests</button>
+                            <button class="filter-chip" data-filter="Food Trail">Food Trails</button>
+                            <button class="filter-chip" data-filter="Nature &amp; Trek">Nature &amp; Treks</button>
+                            <button class="filter-chip" data-filter="Cultural Heritage">Heritage</button>
+                            <button class="filter-chip" data-filter="Photography Trail">Photography</button>
+                            <button class="filter-chip" data-filter="Music &amp; Nature">Music &amp; Coast</button>
+                        </div>
+                        <div class="filter-select-group">
+                            <select id="quest-location-filter">
+                                <option value="all">All Destinations</option>
+                                <option value="loc-kochi">Fort Kochi</option>
+                                <option value="loc-munnar">Munnar</option>
+                                <option value="loc-wayanad">Wayanad</option>
+                                <option value="loc-delhi">Old Delhi</option>
+                                <option value="loc-varkala">Varkala</option>
+                            </select>
+                            <select id="quest-team-filter">
+                                <option value="all">Any Team Size</option>
+                                <option value="individual">Solo/Duo (1-2)</option>
+                                <option value="group">Small Group (3+)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- My Active Quests -->
+                    <div class="section-container hide" id="my-active-quests-container">
+                        <div class="section-header-row">
+                            <div>
+                                <h3 class="section-heading">My Active Expeditions</h3>
+                            </div>
+                        </div>
+                        <div class="quests-horizontal-grid" id="my-active-quests-grid">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <div class="section-header-row" style="margin-top: 32px; margin-bottom: 16px;">
+                        <div><h3 class="section-heading">Discover Quests</h3></div>
+                    </div>
+                    <!-- Quests Full Grid -->
+                    <div class="quests-main-grid" id="quests-full-grid">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+            </div></section>
+
+            <!-- TAB 3: COMMUNITY -->
+            <section id="tab-community" class="game-modal-overlay hide"><div class="game-modal-content"><button class="modal-close-btn" data-close-modal="tab-community">&times;</button>
+                <div class="section-container">
+                    <div class="editorial-header-block">
+                        <span class="sub-label">Wanderers &amp; Hosts</span>
+                        <h2 class="page-title">The Travel Community</h2>
+                        <p class="page-subtitle">
+                            Connect with verified local cultural guides and kindred travellers currently exploring your region. Form small expedition groups and share journey notes.
+                        </p>
+                    </div>
+
+                    <!-- Community Filters -->
+                    <div class="filters-bar">
+                        <div class="filter-chips-group" id="community-role-filters">
+                            <button class="filter-chip active" data-role="all">All Profiles</button>
+                            <button class="filter-chip" data-role="local">Local Hosts</button>
+                            <button class="filter-chip" data-role="traveller">Active Travellers</button>
+                        </div>
+                        <div class="filter-select-group">
+                            <select id="community-interest-filter">
+                                <option value="all">All Interests</option>
+                                <option value="Food Heritage">Food Heritage</option>
+                                <option value="Photography">Photography</option>
+                                <option value="Hiking">Hiking / Nature</option>
+                                <option value="Architecture">Old Architecture</option>
+                                <option value="Tea Lore">Tea Lore</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Community Profiles Grid -->
+                    <div class="community-full-grid" id="community-full-grid">
+                        <!-- Rendered by JS -->
+                    </div>
+
+                    <!-- Exploration Circles / Groups Section -->
+                    <div class="circles-section">
+                        <div class="section-header-row">
+                            <div>
+                                <span class="sub-label">Destination Circles</span>
+                                <h3 class="section-heading">Active Travel Circles</h3>
+                            </div>
+                        </div>
+                        <div class="circles-grid">
+                            <div class="circle-card">
+                                <div class="circle-badge">Kochi Chapter</div>
+                                <h4>Mattancherry Chai &amp; Storytellers</h4>
+                                <p>A weekly gathering of local chroniclers and arriving wanderers trading folklore over spiced Sulaimani.</p>
+                                <div class="circle-meta">
+                                    <span>18 Members</span> &bull; <span>Next meet: Thursday 5 PM</span>
+                                </div>
+                                <button class="btn-secondary-sm" onclick="alert('Joined the Mattancherry Chai &amp; Storytellers circle! You will receive local meet updates.')">Join Circle</button>
+                            </div>
+                            <div class="circle-card">
+                                <div class="circle-badge">High Ranges</div>
+                                <h4>Western Ghats Ridge Walkers</h4>
+                                <p>Slow-paced botany, cloud forest trail observations, and ethical high-range trekking companions.</p>
+                                <div class="circle-meta">
+                                    <span>24 Members</span> &bull; <span>Active in Munnar &amp; Wayanad</span>
+                                </div>
+                                <button class="btn-secondary-sm" onclick="alert('Joined Western Ghats Ridge Walkers! Trail logistics shared in Dispatches.')">Join Circle</button>
+                            </div>
+                            <div class="circle-card">
+                                <div class="circle-badge">Walled Cities</div>
+                                <h4>Old Quarter Shutterbugs</h4>
+                                <p>Dawn light studies, street portrait ethics, and darkroom postcard trades in heritage bazaars.</p>
+                                <div class="circle-meta">
+                                    <span>12 Members</span> &bull; <span>Active in Old Delhi</span>
+                                </div>
+                                <button class="btn-secondary-sm" onclick="alert('Joined Old Quarter Shutterbugs!')">Join Circle</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div></section>
+
+            <!-- TAB 4: PROFILE & FIELD JOURNAL -->
+            <section id="tab-profile" class="game-modal-overlay hide"><div class="game-modal-content"><button class="modal-close-btn" data-close-modal="tab-profile">&times;</button>
+                <div class="section-container">
+                    <div class="profile-hero-card">
+                        <div class="profile-avatar-wrap">
+                            <div class="profile-avatar-placeholder">AK</div>
+                            <span class="profile-badge-tag">Solo Wanderer</span>
+                        </div>
+                        <div class="profile-details">
+                            <div class="profile-title-row">
+                                <h2>Arjun K. (You)</h2>
+                                <span class="member-since">Wayfarer #1084 &bull; Joined 2026</span>
+                            </div>
+                            <p class="profile-bio">
+                                Curious slow traveller documenting spice maritime trails, railway station master clocks, and roadside chai wisdom across South Asia.
+                            </p>
+                            <div class="profile-tags">
+                                <span class="tag">Food Heritage</span>
+                                <span class="tag">Railway Expeditions</span>
+                                <span class="tag">Oral History</span>
+                                <span class="tag">Kerala &amp; Beyond</span>
+                            </div>
+                            <div class="profile-stats-row">
+                                <div class="p-stat"><strong id="profile-my-quests">1</strong> <span>Joined Quests</span></div>
+                                <div class="p-stat"><strong id="profile-my-discoveries">2</strong> <span>Field Discoveries</span></div>
+                                <div class="p-stat"><strong id="profile-my-routes">3</strong> <span>Routes Contributed</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- My Travel Journal & Discoveries -->
+                    <div class="journal-block">
+                        <div class="section-header-row">
+                            <div>
+                                <span class="sub-label">Personal Cartography</span>
+                                <h3 class="section-heading">My Field Discoveries Log</h3>
+                            </div>
+                            <button id="btn-export-journal" class="btn-secondary-sm">Export Travel Notes</button>
+                        </div>
+                        <div class="discoveries-journal-list" id="my-discoveries-list">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+            </div></section>
+
+            <!-- TAB 5: LEADERBOARD -->
+            <section id="tab-leaderboard" class="game-modal-overlay hide"><div class="game-modal-content"><button class="modal-close-btn" data-close-modal="tab-leaderboard">&times;</button>
+                <div class="section-container">
+                    <div class="editorial-header-block">
+                        <span class="sub-label">Global Cartographers</span>
+                        <h2 class="page-title">Wayfarer Leaderboard</h2>
+                        <p class="page-subtitle">
+                            Explorers ranked by Overall Score (Land Territories Held + Long-Distance Travel Yields + Completed Field Discoveries).
+                        </p>
+                    </div>
+
+                    <!-- Player's Personal Standing Summary Banner -->
+                    <div class="lb-summary-card">
+                        <div class="lb-summary-rank">
+                            <span class="rank-num" id="lb-my-rank">#2</span>
+                            <span class="rank-sub">Global Standing</span>
+                        </div>
+                        <div class="lb-summary-stats">
+                            <div class="lb-stat-item">
+                                <span class="stat-l">Total Score</span>
+                                <strong class="stat-v highlight" id="lb-my-total-score">1,480 Pts</strong>
+                            </div>
+                            <div class="lb-stat-item">
+                                <span class="stat-l">Land Parcels Held</span>
+                                <strong class="stat-v" id="lb-my-lands-count">4 Parcels</strong>
+                            </div>
+                            <div class="lb-stat-item">
+                                <span class="stat-l">Locked Home Base</span>
+                                <strong class="stat-v" id="lb-my-home">Fort Kochi</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rankings Table / Cards -->
+                    <div class="leaderboard-table-container">
+                        <div class="leaderboard-header-row">
+                            <span class="col-rank">Rank</span>
+                            <span class="col-user">Explorer</span>
+                            <span class="col-home">Home Base</span>
+                            <span class="col-lands">Lands</span>
+                            <span class="col-dist">Transit Bonus</span>
+                            <span class="col-score">Total Score</span>
+                        </div>
+                        <div class="leaderboard-body" id="leaderboard-rows">
+                            <!-- Populated dynamically by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div></section>
+
+            <!-- TAB 6: ASSETS VAULT -->
+            <section id="tab-assets" class="game-modal-overlay hide"><div class="game-modal-content"><button class="modal-close-btn" data-close-modal="tab-assets">&times;</button>
+                <div class="section-container">
+                    <div class="editorial-header-block">
+                        <span class="sub-label">Wayfarer Holdings</span>
+                        <h2 class="page-title">Assets &amp; Territory Portfolio</h2>
+                        <p class="page-subtitle">
+                            Inspect your acquired land segments, monitor active Aegis Shields, trade territories with kindred travellers, and browse earned historical relics.
+                        </p>
+                    </div>
+
+                    <!-- Portfolio Top Metrics -->
+                    <div class="assets-metrics-row">
+                        <div class="asset-metric-box">
+                            <span class="am-label">Territory Value</span>
+                            <strong class="am-val highlight" id="assets-total-land-pts">1,230 Pts</strong>
+                            <span class="am-sub" id="assets-land-count">4 Owned Parcels</span>
+                        </div>
+                        <div class="asset-metric-box">
+                            <span class="am-label">Active Aegis Shields</span>
+                            <strong class="am-val" id="assets-active-shields">1 Shielded</strong>
+                            <span class="am-sub">Protected against challenges</span>
+                        </div>
+                        <div class="asset-metric-box">
+                            <span class="am-label">Relics &amp; Charters</span>
+                            <strong class="am-val" id="assets-relics-count">4 Acquired</strong>
+                            <span class="am-sub">+1,550 Perk Value</span>
+                        </div>
+                    </div>
+
+                    <!-- Owned Land Parcels Grid -->
+                    <div class="section-header-row" style="margin-top: 28px; margin-bottom: 12px;">
+                        <div>
+                            <span class="sub-label">Sovereign Parcels</span>
+                            <h3 class="section-heading">My Acquired Land Segments</h3>
+                        </div>
+                        <button class="btn-secondary-sm" id="btn-assets-open-trade">Trade a Territory</button>
+                    </div>
+                    <div class="owned-parcels-grid" id="my-owned-parcels-grid">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <!-- Relics & Artifacts -->
+                    <div class="section-header-row" style="margin-top: 36px; margin-bottom: 12px;">
+                        <div>
+                            <span class="sub-label">Expedition Bounty</span>
+                            <h3 class="section-heading">Historical Relics &amp; Charters</h3>
+                        </div>
+                    </div>
+                    <div class="relics-grid" id="relics-assets-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div></section>
+
+            <!-- TAB 7: DISPATCHES -->
+            <section id="tab-dispatches" class="game-modal-overlay hide"><div class="game-modal-content"><button class="modal-close-btn" data-close-modal="tab-dispatches">&times;</button>
+                <div class="section-container">
+                    <div class="editorial-header-block">
+                        <span class="sub-label">The Wayfarer Wire</span>
+                        <h2 class="page-title">Live Dispatches &amp; Broadcasts</h2>
+                        <p class="page-subtitle">
+                            Real-time broadcast events of territory conquests, shield activations, expedition discoveries, and messages from the road.
+                        </p>
+                    </div>
+
+                    <!-- Transmit New Dispatch Form -->
+                    <div class="broadcast-box">
+                        <h4 style="margin-bottom: 8px; font-family: 'Fredoka', sans-serif;">Transmit Dispatch to the Shared World</h4>
+                        <form id="broadcast-dispatch-form" class="broadcast-form">
+                            <input type="text" id="broadcast-input-text" placeholder="Share local road conditions, trade offers, or territory sightings..." autocomplete="off" required>
+                            <button type="submit" class="btn-action-primary">Broadcast &rarr;</button>
+                        </form>
+                    </div>
+
+                    <!-- Dispatches Live Stream -->
+                    <div class="dispatches-stream-container" id="dispatches-stream-container">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+            </div></section>
+        </main>
+
+        <!-- QUEST DETAILS MODAL -->
+        <div id="quest-modal" class="modal-overlay hide">
+            <div class="modal-card quest-detail-card">
+                <button class="modal-close-btn" id="btn-close-quest-modal">&times;</button>
+                <div class="modal-hero-band">
+                    <div class="modal-badge-row">
+                        <span class="badge-pill" id="qm-category">Category</span>
+                        <span class="badge-pill" id="qm-difficulty">Difficulty</span>
+                        <span class="badge-pill" id="qm-duration">Duration</span>
+                    </div>
+                </div>
+                <div class="modal-body-content">
+                    <span class="sub-label" id="qm-location">Location</span>
+                    <h2 class="modal-title" id="qm-title">Quest Title</h2>
+                    <p class="modal-subtitle" id="qm-subtitle">Subtitle</p>
+
+                    <p class="modal-description" id="qm-desc">Detailed lore &amp; quest brief.</p>
+
+                    <div class="quest-milestones-box">
+                        <h4>Expedition Objectives</h4>
+                        <p class="milestone-instruction">Check off objectives as you progress to complete the quest.</p>
+                        <ul id="qm-milestones" class="interactive-checklist">
+                            <!-- Populated by JS -->
+                        </ul>
+                    </div>
+
+                    <div class="quest-team-box">
+                        <div class="team-header">
+                            <h4>Rendezvous Team (<span id="qm-team-count">0/0</span> Joined)</h4>
+                            <span class="team-suitability" id="qm-suitable">Suitable for Both</span>
+                        </div>
+                        <div class="team-status-indicator" id="qm-team-status">
+                            <!-- Status updated by JS -->
+                        </div>
+                        <div class="team-members-list" id="qm-participants">
+                            <!-- Avatars list -->
+                        </div>
+                    </div>
+
+                    <div class="quest-suggested-community">
+                        <h4>Interested Locals &amp; Travellers <span class="demo-data-label">(Demo Data)</span></h4>
+                        <div class="suggested-users-scroll" id="qm-suggested-users">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <div class="quest-reward-box">
+                        <div class="reward-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        </div>
+                        <div>
+                            <h5>Shared World Reward</h5>
+                            <p id="qm-reward-desc">Completing this quest permanently records a historical discovery and illuminates route connections on the global exploration map.</p>
+                        </div>
+                    </div>
+
+                    <div class="modal-actions-bar">
+                        <button id="btn-quest-join-toggle" class="btn-editorial-primary">
+                            Join Expedition Team
+                        </button>
+                        <button id="btn-quest-teammates" class="btn-editorial-secondary">
+                            Message Teammates
+                        </button>
+                        <button id="btn-quest-complete" class="btn-editorial-terracotta" disabled title="Complete all objectives first">
+                            Finish Quest &amp; Claim Discovery
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SIMULATED EXPEDITION PROGRESS VIEW -->
+        <div id="expedition-view" class="expedition-curtain hide">
+            <div class="expedition-modal-panel">
+                <div class="expedition-header">
+                    <span class="sub-label">Active Exploration</span>
+                    <h2 id="exp-headline">Expedition in Progress</h2>
+                    <p id="exp-sub">Traversing the shared landscape</p>
+                </div>
+
+                <div class="expedition-route-visual">
+                    <div class="waypoint-badge">
+                        <span class="wp-dot origin-dot"></span>
+                        <strong id="exp-start-label">Start</strong>
+                    </div>
+                    <div class="route-track-line">
+                        <div class="track-fill" id="exp-track-fill"></div>
+                        <div class="traveler-marker" id="exp-marker">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/></svg>
+                        </div>
+                    </div>
+                    <div class="waypoint-badge">
+                        <span class="wp-dot dest-dot"></span>
+                        <strong id="exp-end-label">End</strong>
+                    </div>
+                </div>
+
+                <div class="expedition-telemetry">
+                    <span id="exp-mode-badge" class="mode-tag">Walking Trail</span>
+                    <span id="exp-status-text">Observing roadside settlements...</span>
+                </div>
+
+                <div class="expedition-discoveries-stream" id="exp-discoveries-stream">
+                    <div class="stream-empty">Field sensory notes will surface along the journey...</div>
+                </div>
+
+                <div class="expedition-footer">
+                    <button id="btn-finish-expedition" class="btn-editorial-primary hide">
+                        Complete Journey &amp; Illuminate Route
+                    </button>
+                    <button id="btn-abort-expedition" class="btn-text-muted">
+                        Cancel Journey
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MESSAGES & DISPATCHES DRAWER (modal only — not visible on map screen) -->
+        <div id="messages-modal" class="modal-overlay hide">
+            <div class="messages-drawer">
+                <div class="messages-header">
+                    <div class="drawer-title-group">
+                        <span class="sub-label">Wayfarer Telegraph</span>
+                        <h3>Dispatches &amp; Chats</h3>
+                    </div>
+                    <div class="drawer-header-actions">
+                        <button id="btn-close-messages" class="modal-close-btn">&times;</button>
+                    </div>
+                </div>
+
+                <div class="messages-layout">
+                    <!-- Conversations Sidebar -->
+                    <div class="conversations-sidebar" id="conversations-list">
+                        <!-- Rendered by JS -->
+                    </div>
+
+                    <!-- Active Conversation Pane -->
+                    <div class="active-chat-pane" id="active-chat-pane">
+                        <div class="chat-empty-state" id="chat-empty-state">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            <p>Select a conversation to read dispatches</p>
+                        </div>
+                        <div class="chat-contact-bar hide" id="chat-contact-bar">
+                            <div class="contact-info">
+                                <div class="avatar-sm-placeholder" id="chat-contact-avatar-placeholder">?</div>
+                                <div>
+                                    <h4 id="chat-contact-name">Contact</h4>
+                                    <span id="chat-contact-status" class="status-indicator">Online</span>
+                                </div>
+                            </div>
+                            <div class="chat-contact-actions">
+                                <button id="btn-chat-view-profile" class="btn-icon-round" title="View Full Profile">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Chat Messages Thread -->
+                        <div class="chat-messages-scroll" id="chat-messages-scroll">
+                            <!-- Messages rendered by JS -->
+                        </div>
+
+                        <!-- Chat Input Form -->
+                        <form id="chat-form" class="chat-input-bar hide">
+                            <input type="text" id="chat-input-text" placeholder="Send dispatch to teammates..." autocomplete="off" required>
+                            <button type="submit" class="btn-send-dispatch">Send &rarr;</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- USER PROFILE QUICK DETAIL MODAL -->
+        <div id="user-profile-modal" class="modal-overlay hide">
+            <div class="modal-card profile-preview-card">
+                <button class="modal-close-btn" id="btn-close-user-modal">&times;</button>
+                <div class="upm-header">
+                    <div class="avatar-large-placeholder" id="upm-avatar-placeholder">?</div>
+                    <div>
+                        <div class="upm-badge-row">
+                            <span class="badge-pill" id="upm-badge">Local Guide</span>
+                            <span class="location-tag" id="upm-location">Location</span>
+                        </div>
+                        <h3 id="upm-name">Person Name</h3>
+                        <p class="upm-role" id="upm-role">Role</p>
+                    </div>
+                </div>
+                <div class="upm-body">
+                    <div class="upm-status-box" id="upm-status-box">
+                        <strong>Availability:</strong> <span id="upm-status">Available today</span>
+                    </div>
+                    <p class="upm-bio" id="upm-bio">Bio description...</p>
+                    <div class="upm-section">
+                        <h5>Travel &amp; Cultural Interests</h5>
+                        <div class="tags-cluster" id="upm-interests"></div>
+                    </div>
+                    <div class="upm-section">
+                        <h5>Languages Spoken</h5>
+                        <div class="tags-cluster" id="upm-languages"></div>
+                    </div>
+                    <div class="modal-actions-bar">
+                        <button id="btn-upm-message" class="btn-editorial-primary">
+                            Send Dispatch
+                        </button>
+                        <button id="btn-upm-invite" class="btn-editorial-secondary">
+                            Invite to Quest
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- QUEST COMPLETION SUMMARY MODAL -->
+        <div id="quest-completion-modal" class="modal-overlay hide">
+            <div class="modal-card completion-summary-card">
+                <div class="completion-hero">
+                    <div class="completion-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    </div>
+                    <h2>Quest Fulfilled!</h2>
+                    <p>Your journey has woven a new thread in the Shared World.</p>
+                </div>
+                <div class="completion-body">
+                    <div class="earned-discovery-box">
+                        <h4>Field Discovery Logged:</h4>
+                        <h3 id="comp-discovery-title">Discovery Title</h3>
+                        <p id="comp-discovery-note">Discovery Note</p>
+                    </div>
+
+                    <div class="completion-map-impact">
+                        <h4>Map Contribution</h4>
+                        <p id="comp-map-impact">Illuminated the route to <strong id="comp-map-route">Location</strong>.</p>
+                    </div>
+
+                    <button class="btn-editorial-primary btn-full-width" id="btn-close-completion">
+                        Return to Journal
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ONBOARDING & REGISTRATION MODAL -->
+        <div id="onboarding-modal" class="modal-overlay hide">
+            <div class="modal-card onboarding-card">
+                <button class="modal-close-btn" id="btn-close-onboarding">&times;</button>
+                <div class="onboarding-header">
+                    <span class="sub-label">Wayfarer Protocol</span>
+                    <h2>Register Explorer Identity</h2>
+                    <p class="onboarding-sub">
+                        Stake your identity in the shared world. Your permanent home base measures true travel distance — travellers from afar reap immense point multipliers when acquiring land!
+                    </p>
+                </div>
+
+                <form id="onboarding-form" class="onboarding-form">
+                    <div class="form-group">
+                        <label for="reg-name">Explorer Call-sign / Name</label>
+                        <input type="text" id="reg-name" required placeholder="e.g. Arjun K. or Malabar Wanderer" value="Arjun K.">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Select Traveller Sigil / Avatar</label>
+                        <div class="avatar-select-grid" id="avatar-select-grid">
+                            <div class="avatar-option active" data-avatar="AK">AK</div>
+                            <div class="avatar-option" data-avatar="EXP">EXP</div>
+                            <div class="avatar-option" data-avatar="NAV">NAV</div>
+                            <div class="avatar-option" data-avatar="TRV">TRV</div>
+                            <div class="avatar-option" data-avatar="WAY">WAY</div>
+                            <div class="avatar-option" data-avatar="ARC">ARC</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-home-base">
+                            Permanent Home Base
+                            <span class="lock-notice"> Locked (Distanced-based territory bonus)</span>
+                        </label>
+                        <select id="reg-home-base" required>
+                            <!-- Populated from homeLocations -->
+                        </select>
+                        <small class="field-hint" id="home-base-hint">
+                            Changing home base requires completing 5 expedition voyages. Distant lands yield up to 10x territory points!
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-bio">Field Philosophy / Explorer Bio</label>
+                        <textarea id="reg-bio" rows="2" placeholder="Tell fellow wanderers what paths you walk...">Curious slow traveller documenting spice maritime trails, railway station master clocks, and roadside chai wisdom across South Asia.</textarea>
+                    </div>
+
+                    <button type="submit" class="btn-action-primary btn-full-width" style="padding: 14px; font-size: 1rem; margin-top: 10px;">
+                        Establish Explorer License &rarr;
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- LAND TRADE MODAL -->
+        <div id="trade-modal" class="modal-overlay hide">
+            <div class="modal-card trade-card">
+                <button class="modal-close-btn" id="btn-close-trade-modal">&times;</button>
+                <div class="trade-header">
+                    <span class="sub-label">Wayfarer Commerce</span>
+                    <h2>Trade Land Territories</h2>
+                    <p class="trade-sub">
+                        Negotiate territorial treaties with kindred travellers. Swap land parcels or barter for travel points.
+                    </p>
+                </div>
+
+                <form id="trade-form" class="trade-form">
+                    <div class="form-group">
+                        <label for="trade-select-parcel">Select Your Territory to Trade</label>
+                        <select id="trade-select-parcel" required>
+                            <!-- Populated with player's owned lands -->
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="trade-select-partner">Select Trading Partner</label>
+                        <select id="trade-select-partner" required>
+                            <!-- Populated from communityUsers -->
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="trade-type">Trade Terms</label>
+                        <select id="trade-type" required>
+                            <option value="points-250">Transfer Territory for +250 Travel Points</option>
+                            <option value="points-400">Premium Cede for +400 Travel Points</option>
+                            <option value="swap">Equitable Territorial Swap Pact</option>
+                        </select>
+                    </div>
+
+                    <div class="trade-preview-box" id="trade-preview-box">
+                        <h5>Pact Details</h5>
+                        <p id="trade-preview-text">Selecting terms...</p>
+                    </div>
+
+                    <button type="submit" class="btn-action-primary btn-full-width" style="padding: 14px; font-size: 1rem;">
+                        Ratify Territory Trade Pact &rarr;
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Mobile & Desktop Bottom Navigation -->
+        <div class="game-hud-bottom">
+            <button class="hud-nav-btn active" id="hud-nav-world" data-tab="tab-explore">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <span>World</span>
+            </button>
+            <button class="hud-nav-btn" data-modal="tab-quests">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <span>Quests</span>
+            </button>
+            <button class="hud-nav-btn" data-modal="tab-assets">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                <span>Assets</span>
+            </button>
+            <button class="hud-nav-btn" data-modal="tab-leaderboard">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <span>Ranks</span>
+            </button>
+            <button class="hud-nav-btn" data-modal="tab-community">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span>People</span>
+            </button>
+            <button class="hud-nav-btn" data-modal="tab-dispatches">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span>Dispatches</span>
+            </button>
+            <button class="hud-nav-btn" data-modal="tab-profile">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                <span>Profile</span>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Scripts: data first, then app logic -->
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
